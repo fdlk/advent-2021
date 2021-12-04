@@ -1,5 +1,4 @@
 import common.loadPackets
-import scala.annotation.tailrec
 
 val input = loadPackets(List("day04.txt"))
 type Board = List[List[Int]]
@@ -22,18 +21,13 @@ def hasBingo(board: Board, turn: Int): Boolean =
 def score(board: Board, turn: Int): Int =
   board.flatten.filter(!drawn(turn).contains(_)).sum * numbers(turn - 1)
 
-@tailrec
-def part1(turn: Int = 0): Int =
-  boards.find(hasBingo(_, turn)) match {
-    case Some(board) => score(board, turn)
-    case None => part1(turn + 1)
-  }
-part1()
+val part1 = numbers.indices
+  .flatMap(turn => boards.find(hasBingo(_, turn)).map(score(_, turn)))
+  .head
 
-@tailrec
-def part2(turn: Int = 0, losers: List[Board] = boards): Int =
-  losers.filter(!hasBingo(_, turn)) match {
-    case Nil => score(losers.head, turn)
-    case stillNoBingo => part2(turn + 1, stillNoBingo)
-  }
-part2()
+def losers(turn: Int): List[Board] = boards.filter(!hasBingo(_, turn))
+
+val part2 = numbers.indices
+  .find(turn => losers(turn) == Nil)
+  .map(turn => score(losers(turn - 1).head, turn))
+  .get
