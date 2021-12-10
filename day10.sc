@@ -18,16 +18,13 @@ def parse(line: String, stack: List[Char] = Nil): Either[String, Char] = //right
       parse(line.tail, stack.tail)
     case (Some(closing), _) => Right(closing)
   }
+val parsed = input.map(parse(_))
 
 val syntaxErrorScore = Map(')' -> 3, ']' -> 57, '}' -> 1197, '>' -> 25137)
-
-val part1 = input.map(parse(_)).flatMap(_.toSeq).map(syntaxErrorScore(_)).sum
+val part1 = parsed.flatMap(_.toSeq).map(syntaxErrorScore(_)).sum
 
 def autocompleteScore(stack: String): Long =
   stack.foldLeft(0L)((score, char) => score * 5 + openingBrackets.indexOf(char) + 1)
 
-val autoCompleteScores = input.map(parse(_))
-  .flatMap(_.left.toSeq)
-  .map(autocompleteScore)
-  .sorted
+val autoCompleteScores = parsed.flatMap(_.left.toSeq).map(autocompleteScore).sorted
 val part2 = autoCompleteScores(autoCompleteScores.length / 2)
