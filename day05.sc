@@ -3,11 +3,11 @@ import common.loadPackets
 val input = loadPackets(List("day05.txt"))
 
 case class Vent(x1: Int, y1: Int, x2: Int, y2: Int) {
-  val dx = math.signum(x2 - x1)
-  val dy = math.signum(y2 - y1)
+  val dx = (x2 - x1).sign
+  val dy = (y2 - y1).sign
   def isDiagonal: Boolean = dx * dy != 0
   def points: Seq[(Int, Int)] =
-    Range.inclusive(0, math.max(math.abs(x2 - x1), math.abs(y2 - y1)))
+    Range.inclusive(0, math.max((x2 - x1).abs, (y2 - y1).abs))
       .map(step => (x1 + dx * step, y1 + dy * step))
 }
 
