@@ -33,24 +33,16 @@ def findFlashes(state: State, flashes: Set[Point]): Set[Point] = {
   if (next == flashes) flashes else findFlashes(state, next)
 }
 
-type StateWithFlashcount = (Int, State)
-
-def next(stateWithFlashcount: StateWithFlashcount): StateWithFlashcount = stateWithFlashcount match {
-  case (flashCount, state) =>
-    val incremented = state.view.mapValues(_ + 1).toMap
-    val flashes = findFlashes(incremented, incremented.filter(_._2 > 9).keySet)
-    (flashCount + flashes.size,
-      incremented.map { case (point, value) => (point,
-        if (flashes.contains(point)) 0
-        else value + point.neighbors.count(flashes.contains)) })
+def next(state: State): State = {
+  val incremented = state.view.mapValues(_ + 1).toMap
+  val flashes = findFlashes(incremented, incremented.filter(_._2 > 9).keySet)
+  incremented.map { case (point, value) =>
+    (point,
+      if (flashes.contains(point)) 0
+      else value + point.neighbors.count(flashes.contains))
+  }
 }
 
-def printState(state: State): String =
-  input.indices.map(y => input.head.indices
-    .map(Point(_, y)).map(state(_)).mkString).mkString("\n")
-
-val initial: StateWithFlashcount = (0, state)
-val part1 = Range(0, 100)
-  .foldLeft(initial) { case (state, iteration) => next(state) }
-  ._1
-
+val states: LazyList[State] = LazyList.iterate(state)(next)
+val part1 = states.take(101).map(_.values.count(_ == 0)).sum
+val part2 = states.indexWhere(_.values.toSet.size == 1)
