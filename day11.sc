@@ -2,16 +2,10 @@ import common.loadPackets
 import scala.annotation.tailrec
 
 case class Point(x: Int, y: Int) {
-  def neighbors = Set(
-    copy(x = x - 1),
-    copy(x = x - 1, y = y - 1),
-    copy(y = y - 1),
-    copy(x = x + 1, y = y - 1),
-    copy(x = x + 1),
-    copy(x = x + 1, y = y + 1),
-    copy(y = y + 1),
-    copy(x = x - 1, y = y + 1)
-  )
+  def neighbors =
+    (for (dx <- -1 to 1;
+          dy <- -1 to 1)
+    yield copy(x = x + dx, y = y + dy)).toSet - this
 }
 
 type State = Map[Point, Int]
