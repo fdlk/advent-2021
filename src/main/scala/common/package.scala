@@ -1,4 +1,6 @@
 import java.io.File
+import scala.collection.convert.ImplicitConversions.`collection asJava`
+import scala.collection.mutable
 
 package object common {
 
@@ -93,5 +95,38 @@ package object common {
   def knotHash(input: String): String = {
     val lengths = input.toList.map(_.toInt) ::: List(17, 31, 73, 47, 23)
     tieKnots(List.fill(64)(lengths).flatten).denseHash
+  }
+
+  trait Grid[T] {
+    def heuristicDistance(from: T, to: T): Int
+
+    def getNeighbours(state: T): List[T]
+
+    def moveCost(from: T, to: T): Int
+  }
+
+  def aStarSearch[T](start: T, finish: T, grid: Grid[T]): Option[Int] = {
+    val closedVertices = mutable.Set[T]()
+    val costFromStart = mutable.Map(start -> 0)
+    val estimatedTotalCost = mutable.Map(start -> grid.heuristicDistance(start, finish))
+    val openVertices: mutable.Set[T] = mutable.Set(start)
+
+    while (openVertices.nonEmpty) {
+      val currentPos = openVertices.minBy(estimatedTotalCost)
+      openVertices.remove(currentPos)
+      if (currentPos == finish) return Some(estimatedTotalCost(currentPos))
+      closedVertices.add(currentPos)
+      grid.getNeighbours(currentPos)
+        .filterNot(closedVertices.contains)
+        .foreach { neighbour =>
+          val score = costFromStart(currentPos) + grid.moveCost(currentPos, neighbour)
+          if (score < costFromStart.getOrElse(neighbour, Integer.MAX_VALUE)) {
+            costFromStart.put(neighbour, score)
+            estimatedTotalCost.put(neighbour, score + grid.heuristicDistance(neighbour, finish))
+            openVertices.add(neighbour)
+          }
+        }
+    }
+    None
   }
 }
