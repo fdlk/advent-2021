@@ -1,4 +1,5 @@
 import java.io.File
+import scala.annotation.tailrec
 import scala.collection.convert.ImplicitConversions.`collection asJava`
 import scala.collection.mutable
 
@@ -106,27 +107,26 @@ package object common {
   }
 
   def aStarSearch[T](start: T, finish: T, grid: Grid[T]): Option[Int] = {
-    val closedVertices = mutable.Set[T]()
-    val costFromStart = mutable.Map(start -> 0)
-    val estimatedTotalCost = mutable.Map(start -> grid.heuristicDistance(start, finish))
-    val openVertices: mutable.Set[T] = mutable.Set(start)
+    case class NodeInfo(costFromStart: Int, estimatedTotalCost: Int)
 
-    while (openVertices.nonEmpty) {
-      val currentPos = openVertices.minBy(estimatedTotalCost)
-      openVertices.remove(currentPos)
-      if (currentPos == finish) return Some(estimatedTotalCost(currentPos))
-      closedVertices.add(currentPos)
-      grid.getNeighbours(currentPos)
-        .filterNot(closedVertices.contains)
-        .foreach { neighbour =>
-          val score = costFromStart(currentPos) + grid.moveCost(currentPos, neighbour)
-          if (score < costFromStart.getOrElse(neighbour, Integer.MAX_VALUE)) {
-            costFromStart.put(neighbour, score)
-            estimatedTotalCost.put(neighbour, score + grid.heuristicDistance(neighbour, finish))
-            openVertices.add(neighbour)
-          }
-        }
+    @tailrec
+    def loop(closed: Set[T], open: Map[T, NodeInfo]): Option[Int] = {
+      if (open.isEmpty) return None
+      val (current, NodeInfo(currentCostFromStart, estimatedTotalCost)) = open.minBy(_._2.estimatedTotalCost)
+      if (current == finish) return Some(estimatedTotalCost)
+      loop(
+        closed + current,
+        grid.getNeighbours(current)
+          .filterNot(closed.contains)
+          .foldLeft(open - current) {
+            case (open, neighbor) =>
+              val neighborCostFromStart = currentCostFromStart + grid.moveCost(current, neighbor)
+              if (open.get(neighbor).exists(_.costFromStart <= neighborCostFromStart)) open
+              else open.updated(neighbor,
+                NodeInfo(neighborCostFromStart, neighborCostFromStart + grid.heuristicDistance(neighbor, finish)))
+          })
     }
-    None
+
+    loop(Set(), Map(start -> NodeInfo(0, grid.heuristicDistance(start, finish))))
   }
 }
