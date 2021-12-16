@@ -23,7 +23,7 @@ case class OperatorPacket(version: Int, typeID: Int, payload: List[Packet]) exte
 
 def getBitValue(bits: List[Bit]) = Integer.parseInt(bits.mkString, 2)
 
-def parseLiteralPacket(version: Int, typeID: Int, body: List[Int]): (Int, LiteralPacket) = {
+def parseLiteralPacket(version: Int, typeID: Int, body: List[Bit]): (Int, LiteralPacket) = {
   val grouped = body.grouped(5).toList
   val numGroups = grouped.zipWithIndex.find(_._1.head == 0).get._2 + 1
   val payload = grouped.take(numGroups)
@@ -33,8 +33,8 @@ def parseLiteralPacket(version: Int, typeID: Int, body: List[Int]): (Int, Litera
   (6 + 5 * numGroups, LiteralPacket(version, typeID, payload))
 }
 
-def parsePacket(input: List[Int]): (Int, Packet) = {
-  def parsePackets(input: List[Int]): List[Packet] = {
+def parsePacket(input: List[Bit]): (Int, Packet) = {
+  def parsePackets(input: List[Bit]): List[Packet] = {
     val (bitsRead, packet) = parsePacket(input)
     val leftover = input.drop(bitsRead)
     if (leftover.isEmpty) List(packet)
@@ -77,3 +77,25 @@ def versionSum(packet: Packet): Int = packet match {
 }
 
 val part1 = versionSum(parsed)
+
+def compute(packet: Packet): Long = packet match {
+  case LiteralPacket(_, _ ,value) => value
+  case OperatorPacket(_, 0, values) => values.map(compute).sum
+  case OperatorPacket(_, 1, values) => values.map(compute).product
+  case OperatorPacket(_, 2, values) => values.map(compute).min
+  case OperatorPacket(_, 3, values) => values.map(compute).max
+  case OperatorPacket(_, 5, values) => values.map(compute) match {
+    case List(a, b) if a > b => 1
+    case _ => 0
+  }
+  case OperatorPacket(_, 6, values) => values.map(compute) match {
+    case List(a, b) if a < b => 1
+    case _ => 0
+  }
+  case OperatorPacket(_, 7, values) => values.map(compute) match {
+    case List(a, b) if a == b => 1
+    case _ => 0
+  }
+}
+
+val part2 = compute(parsed)
