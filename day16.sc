@@ -11,27 +11,13 @@ val bits: List[Bit] = input.split("")
   .flatMap(_.split(""))
   .map(_.toInt).toList
 
-trait Packet {
-  def version: Int
+def getBitValue(bits: List[Bit]) = Integer.parseInt(bits.mkString, 2)
 
-  def typeID: Int
-}
+sealed abstract class Packet
 
 case class LiteralPacket(version: Int, typeID: Int, payload: Long) extends Packet
 
 case class OperatorPacket(version: Int, typeID: Int, payload: List[Packet]) extends Packet
-
-def getBitValue(bits: List[Bit]) = Integer.parseInt(bits.mkString, 2)
-
-def parseLiteralPacket(version: Int, typeID: Int, body: List[Bit]): (Int, LiteralPacket) = {
-  val grouped = body.grouped(5).toList
-  val numGroups = grouped.zipWithIndex.find(_._1.head == 0).get._2 + 1
-  val payload = grouped.take(numGroups)
-    .map(_.tail)
-    .map(getBitValue)
-    .foldLeft(0L)((sum, digit) => sum * 16 + digit)
-  (6 + 5 * numGroups, LiteralPacket(version, typeID, payload))
-}
 
 def parsePacket(input: List[Bit]): (Int, Packet) = {
   def parsePackets(input: List[Bit]): List[Packet] = {
@@ -41,31 +27,44 @@ def parsePacket(input: List[Bit]): (Int, Packet) = {
     else packet :: parsePackets(leftover)
   }
 
+  def parseLiteralPacket(version: Int, typeID: Int, body: List[Bit]): (Int, LiteralPacket) = {
+    val grouped = body.grouped(5).toList
+    val numGroups = grouped.zipWithIndex.find(_._1.head == 0).get._2 + 1
+    val payload = grouped.take(numGroups)
+      .map(_.tail)
+      .map(getBitValue)
+      .foldLeft(0L)((sum, digit) => sum * 16 + digit)
+    (6 + 5 * numGroups, LiteralPacket(version, typeID, payload))
+  }
+
+  def parseOperatorPacket(version: Int, typeID: Int, body: List[Bit]): (Int, OperatorPacket) = {
+    val lengthTypeID = body.head
+    val lengthAndPackets = body.tail
+    if (lengthTypeID == 0) {
+      val (lengthBits, rest) = lengthAndPackets.splitAt(15)
+      val packetLength = getBitValue(lengthBits)
+      val packetBits = rest.take(packetLength)
+      (6 + 1 + 15 + packetLength, OperatorPacket(version, typeID, parsePackets(packetBits)))
+    } else {
+      val (lengthBits, rest) = lengthAndPackets.splitAt(11)
+      val numPackets = getBitValue(lengthBits)
+      val (packetLength, packetStack) = Range(0, numPackets)
+        .foldLeft[(Int, List[Packet])]((0, Nil)) {
+          case ((count, packets), _) =>
+            val (packetBits, packet) = parsePacket(rest.drop(count))
+            (count + packetBits, packet :: packets)
+        }
+      (6 + 1 + 11 + packetLength, OperatorPacket(version, typeID, packetStack.reverse))
+    }
+  }
+
   val header = input.grouped(3).take(2).map(getBitValue).toList
   val version = header.head
   val typeID = header.tail.head
   val body = input.drop(6)
   typeID match {
     case 4 => parseLiteralPacket(version, typeID, body)
-    case _ =>
-      val lengthTypeID = body.head
-      val lengthAndPackets = body.tail
-      if (lengthTypeID == 0) {
-        val (lengthBits, rest) = lengthAndPackets.splitAt(15)
-        val packetLength = getBitValue(lengthBits)
-        val packetBits = rest.take(packetLength)
-        (6 + 1 + 15 + packetLength, OperatorPacket(version, typeID, parsePackets(packetBits)))
-      } else {
-        val (lengthBits, rest) = lengthAndPackets.splitAt(11)
-        val numPackets = getBitValue(lengthBits)
-        val (packetLength, packets) = Range(0, numPackets)
-          .foldLeft[(Int, List[Packet])]((0, Nil)) {
-            case ((count, packets), _) =>
-              val (packetBits, packet) = parsePacket(rest.drop(count))
-              (count + packetBits, packet :: packets)
-          }
-        (6 + 1 + 11 + packetLength, OperatorPacket(version, typeID, packets.reverse))
-      }
+    case _ => parseOperatorPacket(version, typeID, body)
   }
 }
 
@@ -79,7 +78,7 @@ def versionSum(packet: Packet): Int = packet match {
 val part1 = versionSum(parsed)
 
 def compute(packet: Packet): Long = packet match {
-  case LiteralPacket(_, _ ,value) => value
+  case LiteralPacket(_, _, value) => value
   case OperatorPacket(_, 0, values) => values.map(compute).sum
   case OperatorPacket(_, 1, values) => values.map(compute).product
   case OperatorPacket(_, 2, values) => values.map(compute).min
