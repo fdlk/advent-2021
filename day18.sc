@@ -3,7 +3,6 @@ import fastparse.SingleLineWhitespace._
 import fastparse._
 
 import scala.annotation.tailrec
-import scala.util.Success
 import scala.util.matching.Regex
 
 val input = loadPackets(List("day18.txt"))
@@ -53,27 +52,27 @@ def split(string: String): Option[String] =
     val value = m.toString.toInt
     val left = value / 2
     val right = value - left
-    List(string.substring(0, m.start), s"[${left},${right}]", string.substring(m.end)).mkString
+    List(string.substring(0, m.start), s"[$left,$right]", string.substring(m.end)).mkString
   })
 
 @tailrec
-def reduce(string: String): String = {
+def reduce(string: String): String =
   explode(string).orElse(split(string)) match {
     case Some(reduction) => reduce(reduction)
     case None => string
   }
-}
 
-def add(left: String, right: String): String =
-  reduce(s"[${left},${right}]")
+def add(left: String, right: String): String = reduce(s"[$left,$right]")
 
 val reduced = input.reduce(add)
 
 object Parser {
   def number[_: P]: P[Int] = CharIn("0-9").rep(1).!.map(_.toInt)
-  def expression[_: P]: P[Int] = P("[" ~ (number | expression) ~ "," ~ (number|expression) ~ "]").map{
-    case(left, right) => 3 * left + 2 * right
+
+  def expression[_: P]: P[Int] = P("[" ~ (number | expression) ~ "," ~ (number | expression) ~ "]").map {
+    case (left, right) => 3 * left + 2 * right
   }
+
   def magnitude(string: String): Parsed[Int] = parse(string, expression(_))
 }
 
