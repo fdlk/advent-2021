@@ -3,6 +3,7 @@ import fastparse.SingleLineWhitespace._
 import fastparse._
 
 import scala.annotation.tailrec
+import scala.util.Success
 import scala.util.matching.Regex
 
 val input = loadPackets(List("day18.txt"))
@@ -78,3 +79,9 @@ object Parser {
 
 val part1 = Parser.magnitude(reduced)
 
+val part2 = input.combinations(2)
+  .flatMap(combination => List(combination, combination.reverse))
+  .map(_.reduce(add))
+  .map(Parser.magnitude)
+  .map { case Parsed.Success(value, _) => value }
+  .max
