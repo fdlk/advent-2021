@@ -1,34 +1,34 @@
 case class Connection(room: Char, hallway: Char, distance: Int, blockedBy: String)
 
 val connectionList = List(
-  Connection('A', '0', 3, "1"),
-  Connection('A', '1', 2, ""),
-  Connection('A', '2', 2, ""),
-  Connection('A', '3', 4, "2"),
-  Connection('A', '4', 6, "23"),
-  Connection('A', '5', 8, "234"),
-  Connection('A', '6', 9, "2345"),
-  Connection('B', '0', 5, "21"),
-  Connection('B', '1', 4, "2"),
-  Connection('B', '2', 2, ""),
-  Connection('B', '3', 2, ""),
-  Connection('B', '4', 4, "3"),
-  Connection('B', '5', 6, "34"),
-  Connection('B', '6', 7, "345"),
-  Connection('C', '0', 7, "321"),
-  Connection('C', '1', 6, "32"),
-  Connection('C', '2', 4, "3"),
-  Connection('C', '3', 2, ""),
-  Connection('C', '4', 2, ""),
-  Connection('C', '5', 4, "4"),
-  Connection('C', '6', 5, "45"),
-  Connection('D', '0', 9, "4321"),
-  Connection('D', '1', 8, "432"),
-  Connection('D', '2', 6, "43"),
-  Connection('D', '3', 4, "4"),
-  Connection('D', '4', 2, ""),
-  Connection('D', '5', 2, ""),
-  Connection('D', '6', 3, "5"),
+  Connection('A', '0', 2, "1"),
+  Connection('A', '1', 1, ""),
+  Connection('A', '2', 1, ""),
+  Connection('A', '3', 3, "2"),
+  Connection('A', '4', 5, "23"),
+  Connection('A', '5', 7, "234"),
+  Connection('A', '6', 8, "2345"),
+  Connection('B', '0', 4, "21"),
+  Connection('B', '1', 3, "2"),
+  Connection('B', '2', 1, ""),
+  Connection('B', '3', 1, ""),
+  Connection('B', '4', 3, "3"),
+  Connection('B', '5', 5, "34"),
+  Connection('B', '6', 6, "345"),
+  Connection('C', '0', 6, "321"),
+  Connection('C', '1', 5, "32"),
+  Connection('C', '2', 3, "3"),
+  Connection('C', '3', 1, ""),
+  Connection('C', '4', 1, ""),
+  Connection('C', '5', 3, "4"),
+  Connection('C', '6', 4, "45"),
+  Connection('D', '0', 8, "4321"),
+  Connection('D', '1', 7, "432"),
+  Connection('D', '2', 5, "43"),
+  Connection('D', '3', 3, "4"),
+  Connection('D', '4', 1, ""),
+  Connection('D', '5', 1, ""),
+  Connection('D', '6', 2, "5"),
 )
 // (room, hallway) -> Connection
 val connections: Map[(Char, Char), Connection] =
@@ -52,9 +52,9 @@ case class State(rooms: Map[Char, String], hallways: Map[Char, Option[Char]] = h
     .filter(connection => !connection.blockedBy.exists(blocker => hallways(blocker).isDefined))
     .map(_.hallway)
 
-  def moveFromRoomToHallway(room: Char, hallway: Char): State = rooms(room).toList match {
-    case aphipod :: leftover =>
-      State(rooms.updated(room, leftover.mkString), hallways.updated(hallway, Some(aphipod)))
+  def moveFromRoomToHallway(room: Char, hallway: Char): State = {
+    val contents = rooms(room)
+    State(rooms.updated(room, contents.tail), hallways.updated(hallway, Some(contents.head)))
   }
 
   def moveFromHallwayToRoom(hallway: Char, room: Char): State = {
@@ -63,7 +63,7 @@ case class State(rooms: Map[Char, String], hallways: Map[Char, Option[Char]] = h
   }
 }
 
-class Burrow extends common.Grid[State] {
+class Burrow(depth: Int) extends common.Grid[State] {
   override def heuristicDistance(from: State, to: State): Int =
     from.rooms.flatMap {
       case (room, contents) => contents.filter(_ != room).map(mobility)
@@ -96,24 +96,22 @@ class Burrow extends common.Grid[State] {
     if (from.hallways(hallway).isEmpty) {
       // moved from room to hallway
       val room = rooms.find(room => from.rooms(room) != to.rooms(room)).get
-      val extraStep = if (to.rooms(room).isEmpty) 1 else 0
+      val extraSteps = depth - to.rooms(room).length
       val aphipod = to.hallways(hallway).get
-      (connections((room, hallway)).distance + extraStep) * mobility(aphipod)
+      (connections((room, hallway)).distance + extraSteps) * mobility(aphipod)
     } else {
       val source = from.hallways(hallway)
       assert(source.isDefined)
       // moved from hallway to room
       val aphipod = source.get
-      val extraStep = if (from.rooms(aphipod).isEmpty) 1 else 0
-      (connections((aphipod, hallway)).distance + extraStep) * mobility(aphipod)
+      val extraSteps = depth - from.rooms(aphipod).length
+      (connections((aphipod, hallway)).distance + extraSteps) * mobility(aphipod)
     }
   }
 }
 
-val burrow = new Burrow()
-
-val example = State(Map('A' -> "BA", 'B' -> "CD", 'C' -> "BC", 'D' -> "DA"))
-val input = State(Map('A' -> "CB", 'B' -> "BC", 'C' -> "DA", 'D' -> "DA"))
+val burrowPart1 = new Burrow(1)
+val inputPart1 = State(Map('A' -> "CB", 'B' -> "BC", 'C' -> "DA", 'D' -> "DA"))
 /*
 #############
 #...........#
@@ -121,8 +119,18 @@ val input = State(Map('A' -> "CB", 'B' -> "BC", 'C' -> "DA", 'D' -> "DA"))
   #B#C#A#A#
   #########
  */
-val goal = State(rooms.map(room => room -> room.toString * 2).toMap)
-val part1 = common.aStarSearch(input, goal, burrow)
+val goalPart1 = State(rooms.map(room => room -> room.toString * 2).toMap)
+val part1 = common.aStarSearch(inputPart1, goalPart1, new Burrow(2))
 
-
-
+val inputPart2 = State(Map('A' -> "CDDB", 'B' -> "BCBC", 'C' -> "DBAA", 'D' -> "DACA"))
+/*
+#############
+#...........#
+###C#B#D#D###
+  #D#C#B#A#
+  #D#B#A#C#
+  #B#C#A#A#
+  #########
+ */
+val goalPart2 = State(rooms.map(room => room -> room.toString * 4).toMap)
+val part2 = common.aStarSearch(inputPart2, goalPart2, new Burrow(4))
