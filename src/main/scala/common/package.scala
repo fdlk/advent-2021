@@ -1,7 +1,5 @@
 import java.io.File
 import scala.annotation.tailrec
-import scala.collection.convert.ImplicitConversions.`collection asJava`
-import scala.collection.mutable
 
 package object common {
 
@@ -74,34 +72,10 @@ package object common {
     }
   }
 
-
-  def rotateLeft(list: List[Int], by: Int) = list.drop(by) ::: list.take(by)
-
-  case class State(list: List[Int] = (0 until 256).toList, position: Int = 0, skipSize: Int = 0) {
-    def tieKnot(length: Int): State = {
-      val rotated = rotateLeft(list, position)
-      val reversed = rotated.take(length).reverse ::: rotated.drop(length)
-      val knotted = rotateLeft(reversed, list.length - position)
-      State(knotted, (position + length + skipSize) % list.length, (skipSize + 1) % list.length)
-    }
-
-    def denseHash = list.grouped(16)
-      .map(_.reduce(_ ^ _))
-      .map(x => f"$x%02x")
-      .mkString
-  }
-
-  def tieKnots(lengths: Seq[Int]): State = lengths.foldLeft(State())(_ tieKnot _)
-
-  def knotHash(input: String): String = {
-    val lengths = input.toList.map(_.toInt) ::: List(17, 31, 73, 47, 23)
-    tieKnots(List.fill(64)(lengths).flatten).denseHash
-  }
-
   trait Grid[T] {
     def heuristicDistance(from: T, to: T): Int
 
-    def getNeighbours(state: T): List[T]
+    def getNeighbours(state: T): Iterable[T]
 
     def moveCost(from: T, to: T): Int
   }
